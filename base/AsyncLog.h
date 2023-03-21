@@ -8,6 +8,13 @@
 #include <condition_variable>
 #include <queue>
 
+#define LOGD(...) AsyncLog::output(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
+#define LOGI(...) AsyncLog::output(LOG_LEVEL_INFO, __FILE__, __LINE__, __VA_ARGS__)
+#define LOGW(...) AsyncLog::output(LOG_LEVEL_WARNING, __FILE__, __LINE__, __VA_ARGS__)
+#define LOGE(...) AsyncLog::output(LOG_LEVEL_ERROR, __FILE__, __LINE__, __VA_ARGS__)
+#define LOGF(...) AsyncLog::output(LOG_LEVEL_FATAL, __FILE__, __LINE__, __VA_ARGS__)
+#define LOGC(...) AsyncLog::output(LOG_LEVEL_CRITICAL, __FILE__, __LINE__, __VA_ARGS__)
+
 enum LOG_LEVEL
 {
     LOG_LEVEL_DEBUG,

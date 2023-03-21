@@ -138,6 +138,12 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFmt, ...)
 
     logLine += strLogMsg;
 
+    if(nLevel == LOG_LEVEL_FATAL)
+    {
+        writeToFile(logLine);
+        crash();
+    }
+
     // 将日志内容加入待写入队列
     std::lock_guard<std::mutex> lock(mutexWrite_);
     listLinesToWrite_.push(std::move(logLine));
@@ -180,6 +186,12 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFileName, int nLineNo, co
         strLogMsg = strLogMsg.substr(0, uiTruncateSize_);
     }
     logLine += strLogMsg;
+    
+    if(nLevel == LOG_LEVEL_FATAL)
+    {
+        writeToFile(logLine);
+        crash();
+    }
 
     // 将日志内容加入待写入队列
     std::lock_guard<std::mutex> lock(mutexWrite_);
