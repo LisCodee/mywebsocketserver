@@ -9,6 +9,7 @@
 
 build/
 .vscode/
+3rdparty/
 # Precompiled Headers
 *.gch
 *.pch

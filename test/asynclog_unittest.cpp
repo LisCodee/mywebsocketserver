@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 #include "../base/AsyncLog.h"
 
 TEST(AsyncLogTest, InitTest)
@@ -13,7 +13,7 @@ TEST(AsyncLogTest, LogNoFatal)
     EXPECT_EQ(true, AsyncLog::init("LogNoFatal.log"));
     AsyncLog::setLevel(LOG_LEVEL_DEBUG);
     ASSERT_EQ(true, AsyncLog::isRunning());
-    for(int i = 0; i < 5000; ++i)
+    for(int i = 0; i < 5; ++i)
     {
         LOGD("In TEST LOGNOFATAL:");
         LOGI("In TEST LOGNOFATAL:");

@@ -95,7 +95,7 @@ private:
     static std::string strFileName_;                                   // 日志文件名
     static std::string strPid_;                                        // 进程id
     static LOG_LEVEL euCurrentLevel_;                                  // 当前日志等级
-    static uint32_t uiMaxFileSize_;                                    // 单个日志文件最大size
+    const static uint32_t uiMaxFileSize_ = 10 * 1024 * 1024;                                    // 单个日志文件最大size
     static uint32_t uiCurrentWritten_;                                 // 当前写入字节数
     static FILE *hLogFile_;                                            // 当前文件句柄
     static uint8_t u8WrtieThreads_;                                    // 写日志线程数

@@ -17,7 +17,6 @@ bool AsyncLog::bToFile_ = true;
 std::string AsyncLog::strFileName_ = "";
 std::string AsyncLog::strPid_ = "";
 LOG_LEVEL AsyncLog::euCurrentLevel_ = LOG_LEVEL_ERROR;
-uint32_t AsyncLog::uiMaxFileSize_ = 10 * 1024 * 1024;
 uint32_t AsyncLog::uiCurrentWritten_ = 0;
 FILE *AsyncLog::hLogFile_ = 0;
 std::queue<std::string> AsyncLog::listLinesToWrite_;
@@ -152,7 +151,7 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFmt, ...)
     // 将日志内容加入待写入队列
     std::lock_guard<std::mutex> lock(mutexWrite_);
     listLinesToWrite_.push(std::move(logLine));
-    cvWrite_.notify_one();
+    cvWrite_.notify_all();
     return true;
 }
 
@@ -193,7 +192,7 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFileName, int nLineNo, co
     // 将日志内容加入待写入队列
     std::lock_guard<std::mutex> lock(mutexWrite_);
     listLinesToWrite_.push(std::move(logLine));
-    cvWrite_.notify_one();
+    cvWrite_.notify_all();
     return true;
 }
 
@@ -289,7 +288,7 @@ void AsyncLog::writeThreadProc()
         }
         if (bToFile_)
         {
-            if (strFileName_.empty() && hLogFile_ == 0)
+            if ((strFileName_.empty() && hLogFile_ == 0)||uiCurrentWritten_ >= uiMaxFileSize_)
             {
                 strFileName_ = generateLogFileName(strPid_);
                 if (!createNewFile(strFileName_.c_str()))
@@ -299,6 +298,7 @@ void AsyncLog::writeThreadProc()
                 uiCurrentWritten_ = 0;
             }
             writeToFile(strLogLine);
+            uiCurrentWritten_ += strLogLine.size();
         }
         else
             std::cout << strLogLine << std::endl;
