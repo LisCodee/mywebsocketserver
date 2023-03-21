@@ -14,18 +14,19 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 set(test 
-test/hello_test.cpp)
+test/asynclog_unittest.cpp)
 set(utils 
 base/AsyncLog.h
 base/AsyncLog.cpp
 )
 set(net )
 set(base )
+set(src )
 
 
 enable_testing()
 
-add_executable(server ${test} ${utils})
+add_executable(server ${test} ${utils} ${src})
 
 target_link_libraries(
         server

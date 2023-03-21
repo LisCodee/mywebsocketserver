@@ -92,7 +92,21 @@ bool AsyncLog::init(const char *pszLogFileName, bool bToFile, bool bTruncate, ui
 
 bool AsyncLog::uninit()
 {
-    return false;
+    bExit_ = true;
+    cvWrite_.notify_all();
+    for(auto sptrThread:listWriteThread_)
+    {
+        if(sptrThread.get()->joinable())
+        {
+            sptrThread.get()->join();
+        }
+    }
+
+    if(hLogFile_ != 0)
+        fclose(hLogFile_);
+    hLogFile_ = 0;
+    bRunning_ = false;
+    return true;
 }
 
 bool AsyncLog::setLevel(LOG_LEVEL level)
@@ -116,31 +130,22 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFmt, ...)
     std::string logLine;
     makeLinePrefix(nLevel, logLine);
     // log正文
-    std::string logContent;
+    char* pszLogContent = new char[uiTruncateSize_];
     va_list ap;
     va_start(ap, pszFmt);
-    int nContentLen = vsnprintf(NULL, 0, pszFmt, ap);
+    int nContentLen = vsnprintf(pszLogContent, uiTruncateSize_, pszFmt, ap);
     va_end(ap);
-    if (int(logContent.capacity()) < nContentLen + 1)
-    {
-        logContent.resize(nContentLen + 1);
-    }
-    va_list aq;
-    va_start(aq, pszFmt);
-    vsnprintf(const_cast<char *>(logContent.data()), (int)logContent.capacity(), pszFmt, aq);
-    // 截断log
-    std::string strLogMsg;
-    strLogMsg.append(logContent, nContentLen);
-    if (bTruncateLongLog_)
-    {
-        strLogMsg = strLogMsg.substr(0, uiTruncateSize_);
-    }
-
-    logLine += strLogMsg;
+    
+    std::cout << pszLogContent;
+    logLine += pszLogContent;
+    logLine += "\n";
 
     if(nLevel == LOG_LEVEL_FATAL)
     {
-        writeToFile(logLine);
+        if(bToFile_)
+            writeToFile(logLine);
+        else
+            std::cout << logLine;
         crash();
     }
 
@@ -166,30 +171,22 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFileName, int nLineNo, co
     snprintf(szFileName, sizeof szFileName, "[%s:%d]", pszFileName, nLineNo);
     logLine += szFileName;
     // log正文
-    std::string logContent;
+    char* pszLogContent = new char[uiTruncateSize_];
     va_list ap;
     va_start(ap, pszFmt);
-    int nContentLen = vsnprintf(NULL, 0, pszFmt, ap);
+    int nContentLen = vsnprintf(pszLogContent, uiTruncateSize_, pszFmt, ap);
     va_end(ap);
-    if (int(logContent.capacity()) < nContentLen + 1)
-    {
-        logContent.resize(nContentLen + 1);
-    }
-    va_list aq;
-    va_start(aq, pszFmt);
-    vsnprintf(const_cast<char *>(logContent.data()), (int)logContent.capacity(), pszFmt, aq);
-    // 截断log
-    std::string strLogMsg;
-    strLogMsg.append(logContent, nContentLen);
-    if (bTruncateLongLog_)
-    {
-        strLogMsg = strLogMsg.substr(0, uiTruncateSize_);
-    }
-    logLine += strLogMsg;
+    
+    std::cout << pszLogContent;
+    logLine += pszLogContent;
+    logLine += "\n";
     
     if(nLevel == LOG_LEVEL_FATAL)
     {
-        writeToFile(logLine);
+        if(bToFile_)
+            writeToFile(logLine);
+        else
+            std::cout << logLine;
         crash();
     }
 
