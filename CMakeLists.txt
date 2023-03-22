@@ -1,40 +1,32 @@
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(myserver VERSION 1.0)
 
-set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/3rdparty)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -Wall -O0 -Wno-unused-variable -pthread")
 
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-
-set(test 
-test/asynclog_unittest.cpp)
+set(unit_test
+test/asynclog_unittest.cpp
+test/socket_unittest.cpp
+test/_main.cpp)
 set(utils 
 base/AsyncLog.h
 base/AsyncLog.cpp
 )
-set(net )
+set(net 
+net/net.h
+net/net.cpp)
 set(base )
-set(src src/main.cpp)
-
+# set(src src/main.cpp)
 
 enable_testing()
 
-add_executable(myserver ${test} ${utils} ${src})
-
-target_link_libraries(
-    myserver 
-    GoogleTest
+add_executable(myserver ${utils} ${unit_test} ${src} ${net})
+target_link_libraries(myserver PUBLIC 
+    /usr/local/lib/libgtest.a
+    /usr/local/lib/libgtest_main.a
 )
-
-include(GoogleTest)
-gtest_discover_tests(myserver)

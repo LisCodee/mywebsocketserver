@@ -7,8 +7,12 @@
 #include <time.h>
 #else
 #include <sys/timeb.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #endif
+
+//debug 宏变量，向控制台输出日志
+#define LOGSTD
 
 // 初始化静态变量
 bool AsyncLog::bTruncateLongLog_ = true;
@@ -27,7 +31,7 @@ bool AsyncLog::bExit_ = false;
 bool AsyncLog::bRunning_ = false;
 uint8_t AsyncLog::u8WrtieThreads_ = 2;
 
-std::string &generateLogFileName(const std::string &pid)
+std::string generateLogFileName(const std::string &pid)
 {
     char szNow[64];
     time_t now = time(NULL);
@@ -58,18 +62,17 @@ bool AsyncLog::init(const char *pszLogFileName, bool bToFile, bool bTruncate, ui
     snprintf(szPid, sizeof szPid, "%06d", (int)::getpid());
 #endif
     strPid_ = szPid;
+    bToFile_ = bToFile;
+    bTruncate = bTruncate;
+    uiTruncateSize_ = iMaxSize > 64 ? iMaxSize : 64; // 默认最小长度64
     // 文件名为空，创建默认文件
-    if (pszLogFileName == 0 || strlen(pszLogFileName) == 0)
+    if ((pszLogFileName == 0 || strlen(pszLogFileName) == 0) && bToFile_)
     {
         strFileName_.clear();
         strFileName_ = generateLogFileName(strPid_);
     }
     else
         strFileName_ = pszLogFileName;
-
-    bToFile_ = bToFile;
-    bTruncate = bTruncate;
-    uiTruncateSize_ = iMaxSize > 64 ? iMaxSize : 64; // 默认最小长度64
     // 打开文件句柄
     if (bToFile_)
     {
@@ -93,15 +96,15 @@ bool AsyncLog::uninit()
 {
     bExit_ = true;
     cvWrite_.notify_all();
-    for(auto sptrThread:listWriteThread_)
+    for (auto sptrThread : listWriteThread_)
     {
-        if(sptrThread.get()->joinable())
+        if (sptrThread.get()->joinable())
         {
             sptrThread.get()->join();
         }
     }
 
-    if(hLogFile_ != 0)
+    if (hLogFile_ != 0)
         fclose(hLogFile_);
     hLogFile_ = 0;
     bRunning_ = false;
@@ -129,19 +132,19 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFmt, ...)
     std::string logLine;
     makeLinePrefix(nLevel, logLine);
     // log正文
-    char* pszLogContent = new char[uiTruncateSize_];
+    char *pszLogContent = new char[uiTruncateSize_];
     va_list ap;
     va_start(ap, pszFmt);
     int nContentLen = vsnprintf(pszLogContent, uiTruncateSize_, pszFmt, ap);
     va_end(ap);
-    
-    std::cout << pszLogContent;
+
+    // std::cout << pszLogContent;
     logLine += pszLogContent;
     logLine += "\n";
 
-    if(nLevel == LOG_LEVEL_FATAL)
+    if (nLevel == LOG_LEVEL_FATAL)
     {
-        if(bToFile_)
+        if (bToFile_)
             writeToFile(logLine);
         else
             std::cout << logLine;
@@ -170,19 +173,22 @@ bool AsyncLog::output(LOG_LEVEL nLevel, const char *pszFileName, int nLineNo, co
     snprintf(szFileName, sizeof szFileName, "[%s:%d]", pszFileName, nLineNo);
     logLine += szFileName;
     // log正文
-    char* pszLogContent = new char[uiTruncateSize_];
+    char *pszLogContent = new char[uiTruncateSize_];
     va_list ap;
     va_start(ap, pszFmt);
     int nContentLen = vsnprintf(pszLogContent, uiTruncateSize_, pszFmt, ap);
     va_end(ap);
-    
-    std::cout << pszLogContent;
+
+    // std::cout << pszLogContent;
     logLine += pszLogContent;
     logLine += "\n";
-    
-    if(nLevel == LOG_LEVEL_FATAL)
+
+    if (nLevel == LOG_LEVEL_FATAL)
     {
-        if(bToFile_)
+#ifdef LOGSTD
+        std::cout << logLine;
+#endif
+        if (bToFile_)
             writeToFile(logLine);
         else
             std::cout << logLine;
@@ -218,7 +224,13 @@ void AsyncLog::makeLinePrefix(LOG_LEVEL nLevel, std::string &strPrefix)
     strPrefix += "]";
     // 当前线程信息
     char szThreadId[32]{0};
-    snprintf(szThreadId, sizeof szThreadId, "[%s]", std::this_thread::get_id());
+#ifdef WIN32
+    DWORD threadId = ::GetCurrentThreadId();
+#else
+    int threadId = syscall(SYS_gettid);
+#endif
+    snprintf(szThreadId, sizeof szThreadId, "[%d]", (int)threadId);
+    strPrefix += szThreadId;
 }
 
 void AsyncLog::getTime(char *pszTime, int nTimeStrLen)
@@ -237,6 +249,8 @@ void AsyncLog::getTime(char *pszTime, int nTimeStrLen)
 
 bool AsyncLog::createNewFile(const char *pszLogFileName)
 {
+    if (hLogFile_)
+        fclose(hLogFile_);
     hLogFile_ = fopen(strFileName_.c_str(), "w+");
     return hLogFile_ != nullptr;
 }
@@ -252,7 +266,7 @@ bool AsyncLog::writeToFile(const std::string &data)
         {
             return false;
         }
-        else if (ret < dataLocal.size())
+        else if (ret <= dataLocal.size())
         {
             dataLocal.erase(0, ret);
         }
@@ -286,10 +300,15 @@ void AsyncLog::writeThreadProc()
             strLogLine = listLinesToWrite_.front();
             listLinesToWrite_.pop();
         }
+#ifdef LOGSTD
+        std::cout << strLogLine;
+#endif
         if (bToFile_)
         {
-            if ((strFileName_.empty() && hLogFile_ == 0)||uiCurrentWritten_ >= uiMaxFileSize_)
+            // std::unique_lock<std::mutex> guard(mutexWrite_);
+            if ((strFileName_.empty() && hLogFile_ == 0) || uiCurrentWritten_ >= uiMaxFileSize_)
             {
+                std::unique_lock<std::mutex> guard(mutexWrite_);
                 strFileName_ = generateLogFileName(strPid_);
                 if (!createNewFile(strFileName_.c_str()))
                 {
