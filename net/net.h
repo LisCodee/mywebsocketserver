@@ -33,6 +33,11 @@ namespace net
         SOCKET accept(SOCKET sockfd, struct sockaddr_in *clientAddr);
 
         int32_t read(SOCKET sockfd, void *buf, int32_t count);
+        /// @brief 向sockfd发送buffer中的数据
+        /// @param sockfd 
+        /// @param buf 待发送数据
+        /// @param size 数据大小
+        /// @return 0 对端关闭连接; -1 阻塞; -2 出错 @other实际写入字节
         int32_t write(SOCKET sockfd, const void *buf, int32_t count);
         void close(SOCKET sockfd);
 
@@ -61,22 +66,23 @@ namespace net
     public:
         InetAddress();
         explicit InetAddress(uint16_t port, bool loopBackOnly = false);
-        InetAddress(const std::string& ip, uint16_t port);
-        InetAddress(const struct sockaddr_in& addr): addr_(addr){}
+        InetAddress(const std::string &ip, uint16_t port);
+        InetAddress(const struct sockaddr_in &addr) : addr_(addr) {}
 
-        InetAddress(const InetAddress& rhs) = delete;
-        InetAddress& operator=(const InetAddress& rhs) = delete;
+        InetAddress(const InetAddress &rhs) = delete;
+        InetAddress &operator=(const InetAddress &rhs) = delete;
 
         std::string toIp() const;
         std::string toIpPort() const;
         uint16_t toPort() const;
 
-        const struct sockaddr_in& getSockAddrIn() const {return addr_;}
-        void setSockAddrIn(const struct sockaddr_in& addr){addr_ = addr;}
-        uint32_t ipNetEndian() const {return addr_.sin_addr.s_addr;}
-        uint16_t portNetEndian() const {return addr_.sin_port;}
+        const struct sockaddr_in &getSockAddrIn() const { return addr_; }
+        void setSockAddrIn(const struct sockaddr_in &addr) { addr_ = addr; }
+        uint32_t ipNetEndian() const { return addr_.sin_addr.s_addr; }
+        uint16_t portNetEndian() const { return addr_.sin_port; }
 
-        static bool resolveHostname(std::string hostname, InetAddress* result);
+        static bool resolveHostname(std::string hostname, InetAddress *result);
+
     private:
         struct sockaddr_in addr_;
     };
@@ -90,15 +96,15 @@ namespace net
         ~Socket() { net::sockets::close(sockfd_); }
         SOCKET fd() const { return sockfd_; }
 
-        Socket(const Socket& rhs) = delete;
-        Socket& operator=(const Socket& rhs) = delete;
+        Socket(const Socket &rhs) = delete;
+        Socket &operator=(const Socket &rhs) = delete;
 
-        void bindAddress(const InetAddress& addr);
-        int connect(const InetAddress& addr);
+        void bindAddress(const InetAddress &addr);
+        int connect(const InetAddress &addr);
         void listen();
-        SOCKET accept(InetAddress& addr);
-        uint32_t write(const void* buffer, uint32_t size);
-        uint32_t read(void* buffer, uint32_t size);
+        SOCKET accept(InetAddress &addr);
+        uint32_t write(const void *buffer, uint32_t size);
+        uint32_t read(void *buffer, uint32_t size);
         void setNonblock();
         void setReuseAddr(bool on);
         void setReusePort(bool on);

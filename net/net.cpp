@@ -72,7 +72,7 @@ void net::sockets::bindOrDie(SOCKET sockfd, const sockaddr_in &addr)
 
 void net::sockets::listenOrDie(SOCKET sockfd)
 {
-    if (::listen(sockfd, 0) < 0)
+    if (::listen(sockfd, SOMAXCONN) < 0)
     {
         LOGF("sockfd:%d listen error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
@@ -106,34 +106,42 @@ int32_t net::sockets::read(SOCKET sockfd, void *buf, int32_t count)
         {
             // 阻塞
             LOGI("read blocked.");
+            return -1;
         }
         else
         {
             // 出错
             LOGE("read from sockfd:%d error", sockfd);
         }
-        return -1;
+        return -2;
     }
     return n;
 }
 
-///暂时没有考虑一次没写完的情况
+/// 暂时没有考虑一次没写完的情况
 int32_t net::sockets::write(SOCKET sockfd, const void *buf, int32_t count)
 {
     int32_t n = ::send(sockfd, buf, count, 0);
+    if (n == 0)
+    {
+        // 对端关闭连接
+        close(sockfd);
+        return 0;
+    }
     if (n == -1)
     {
         if (getSockError(sockfd) == EWOULDBLOCK)
         {
             // 阻塞
             LOGI("read blocked.");
+            return -1;
         }
         else
         {
             LOGE("read from sockfd:%d error", sockfd);
             // 出错
         }
-        return -1;
+        return -2;
     }
     return n;
 }
@@ -192,13 +200,13 @@ int net::sockets::getSockError(SOCKET sockfd)
     err = errno;
 #endif
     int val = 0, valLen = sizeof(val);
-    if(err == EWOULDBLOCK && sockfd > 0)
+    if (err == EWOULDBLOCK && sockfd > 0)
     {
-        if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &val, (socklen_t*)&valLen) == -1)
+        if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &val, (socklen_t *)&valLen) == -1)
         {
             return err;
         }
-        if(val)
+        if (val)
             return val;
     }
     return err;
@@ -206,7 +214,7 @@ int net::sockets::getSockError(SOCKET sockfd)
 
 void net::sockets::setTcpNoDelay(SOCKET sockfd, bool on)
 {
-    if(setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == -1)
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == -1)
     {
         LOGE("set tcp nodelay to sockfd:%d error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
@@ -214,7 +222,7 @@ void net::sockets::setTcpNoDelay(SOCKET sockfd, bool on)
 
 void net::sockets::setKeepAlive(SOCKET sockfd, bool on)
 {
-    if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) == -1)
+    if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) == -1)
     {
         LOGE("set socket:%d keep alive error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
@@ -222,11 +230,11 @@ void net::sockets::setKeepAlive(SOCKET sockfd, bool on)
 
 net::Socket::Socket(bool nonblock, int domain, int type, int protocol)
 {
-    if((sockfd_ = ::socket(domain, type, protocol)) == -1)
+    if ((sockfd_ = ::socket(domain, type, protocol)) == -1)
     {
         LOGF("create socket error:%s", strerror(errno));
     }
-    if(nonblock)
+    if (nonblock)
         net::sockets::setNonblockAndCloseOnExec(sockfd_);
 }
 
@@ -248,7 +256,7 @@ void net::Socket::listen()
 SOCKET net::Socket::accept(InetAddress &addr)
 {
     struct sockaddr_in cAddr;
-    SOCKET clientfd =  net::sockets::accept(sockfd_, &cAddr);
+    SOCKET clientfd = net::sockets::accept(sockfd_, &cAddr);
     addr.setSockAddrIn(cAddr);
     LOGI("server accept a client:%s", addr.toIpPort());
     return clientfd;
@@ -331,16 +339,16 @@ bool net::InetAddress::resolveHostname(std::string hostname, InetAddress *result
 {
     struct addrinfo hint, *res, *p;
     memset(&hint, 0, sizeof(hint));
-    if(getaddrinfo(hostname.c_str(), "http", &hint, &res) != 0)
+    if (getaddrinfo(hostname.c_str(), "http", &hint, &res) != 0)
     {
         LOGE("resolveHostname error, errno:%d, err:%s", errno, strerror(errno));
     }
-    //获取第一个ipv4地址
-    for(p = res; p != NULL;)
+    // 获取第一个ipv4地址
+    for (p = res; p != NULL;)
     {
-        if(p->ai_family == AF_INET)
+        if (p->ai_family == AF_INET)
         {
-            struct sockaddr_in *temp = (struct sockaddr_in*)p->ai_addr;
+            struct sockaddr_in *temp = (struct sockaddr_in *)p->ai_addr;
             result->setSockAddrIn(*temp);
             return true;
         }
