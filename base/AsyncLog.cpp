@@ -20,7 +20,7 @@ uint32_t AsyncLog::uiTruncateSize_ = 256;
 bool AsyncLog::bToFile_ = true;
 std::string AsyncLog::strFileName_ = "";
 std::string AsyncLog::strPid_ = "";
-LOG_LEVEL AsyncLog::euCurrentLevel_ = LOG_LEVEL_ERROR;
+LOG_LEVEL AsyncLog::euCurrentLevel_ = LOG_LEVEL_INFO;
 uint32_t AsyncLog::uiCurrentWritten_ = 0;
 FILE *AsyncLog::hLogFile_ = 0;
 std::queue<std::string> AsyncLog::listLinesToWrite_;

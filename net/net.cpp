@@ -7,7 +7,7 @@ SOCKET net::sockets::createOrDie()
 {
     SOCKET sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1)
-        LOGF("create socket error!");
+        LOGF("create socket error:%s!", strerror(errno));
     return sockfd;
 }
 
@@ -26,7 +26,7 @@ void net::sockets::setNonblockAndCloseOnExec(SOCKET sockfd)
     int newFlag = oldFlag | O_NONBLOCK;
     if (fcntl(sockfd, F_SETFL, newFlag) == -1)
     {
-        LOGF("set nonblock to sockfd: %d error", sockfd);
+        LOGF("set nonblock to sockfd: %d error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 #endif
 }
@@ -35,7 +35,7 @@ void net::sockets::setReuseAddr(SOCKET sockfd, bool on)
 {
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1)
     {
-        LOGE("setReuseAddr to sockfd:%d error", sockfd);
+        LOGE("setReuseAddr to sockfd:%d error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 }
 
@@ -43,7 +43,7 @@ void net::sockets::setReusePort(SOCKET sockfd, bool on)
 {
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) == -1)
     {
-        LOGE("setReusePort to sockfd:%d error", sockfd);
+        LOGE("setReusePort to sockfd:%d error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 }
 
@@ -51,7 +51,7 @@ int net::sockets::connect(SOCKET sockfd, const sockaddr_in &addr)
 {
     if (::connect(sockfd, (const sockaddr *)&addr, sizeof(addr)) == -1)
     {
-        LOGE("sockfd:%d connect to addr error", sockfd);
+        LOGE("sockfd:%d connect to addr error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
         return -1;
     }
     return 0;
@@ -74,7 +74,7 @@ void net::sockets::listenOrDie(SOCKET sockfd)
 {
     if (::listen(sockfd, 0) < 0)
     {
-        LOGF("sockfd:%d listen error", sockfd);
+        LOGF("sockfd:%d listen error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 }
 
@@ -84,7 +84,7 @@ SOCKET net::sockets::accept(SOCKET sockfd, sockaddr_in *clientAddr)
     SOCKET clientfd = ::accept(sockfd, (sockaddr *)clientAddr, &clientAddrLen);
     if (clientfd == -1)
     {
-        LOGE("accept sock from sockfd:%d error, accept failed", sockfd);
+        LOGE("accept sock from sockfd:%d error:%s, accept failed", sockfd, strerror(net::sockets::getSockError(sockfd)));
         return -1;
     }
     return clientfd;
@@ -208,7 +208,7 @@ void net::sockets::setTcpNoDelay(SOCKET sockfd, bool on)
 {
     if(setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == -1)
     {
-        LOGE("set tcp nodelay to sockfd:%d error", sockfd);
+        LOGE("set tcp nodelay to sockfd:%d error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 }
 
@@ -216,7 +216,7 @@ void net::sockets::setKeepAlive(SOCKET sockfd, bool on)
 {
     if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) == -1)
     {
-        LOGE("set socket:%d keep alive error", sockfd);
+        LOGE("set socket:%d keep alive error:%s", sockfd, strerror(net::sockets::getSockError(sockfd)));
     }
 }
 
@@ -250,7 +250,18 @@ SOCKET net::Socket::accept(InetAddress &addr)
     struct sockaddr_in cAddr;
     SOCKET clientfd =  net::sockets::accept(sockfd_, &cAddr);
     addr.setSockAddrIn(cAddr);
+    LOGI("server accept a client:%s", addr.toIpPort());
     return clientfd;
+}
+
+uint32_t net::Socket::write(const void *buffer, uint32_t size)
+{
+    return net::sockets::write(sockfd_, buffer, size);
+}
+
+uint32_t net::Socket::read(void *buffer, uint32_t size)
+{
+    return net::sockets::read(sockfd_, buffer, size);
 }
 
 void net::Socket::setNonblock()
@@ -276,6 +287,11 @@ void net::Socket::setTcpNoDelay(bool on)
 void net::Socket::setKeepAlive(bool on)
 {
     net::sockets::setKeepAlive(sockfd_, on);
+}
+
+net::InetAddress::InetAddress()
+{
+    memset(&addr_, 0, sizeof(addr_));
 }
 
 net::InetAddress::InetAddress(uint16_t port, bool loopBackOnly)

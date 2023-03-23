@@ -59,6 +59,7 @@ namespace net
     class InetAddress
     {
     public:
+        InetAddress();
         explicit InetAddress(uint16_t port, bool loopBackOnly = false);
         InetAddress(const std::string& ip, uint16_t port);
         InetAddress(const struct sockaddr_in& addr): addr_(addr){}
@@ -96,6 +97,8 @@ namespace net
         int connect(const InetAddress& addr);
         void listen();
         SOCKET accept(InetAddress& addr);
+        uint32_t write(const void* buffer, uint32_t size);
+        uint32_t read(void* buffer, uint32_t size);
         void setNonblock();
         void setReuseAddr(bool on);
         void setReusePort(bool on);
