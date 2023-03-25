@@ -5,7 +5,8 @@
 
 namespace
 {
-    class ThreadTest : public ::testing::Test
+    using net::thread::ThreadPool;
+    class ThreadPoolTest : public ::testing::Test
     {
     protected:
         static void SetUpTestSuite()
@@ -19,12 +20,12 @@ namespace
         }
         void SetUp() override
         {
-            tp.reset(new ThreadPool(4, 10));
+            tp.reset(new ThreadPool(4, 4));
         }
 
         void TearDown() override
         {
-            tp->stop();
+            
         }
 
         std::shared_ptr<ThreadPool> tp;
@@ -35,15 +36,22 @@ namespace
         std::cout << "handler func exec" << std::endl;
     }
 
-    // TEST_F(ThreadTest, BaseTest)
-    // {
-    //     tp->addTask(ThreadPool::Task(handler));
-    //     tp->addTask(ThreadPool::Task(handler));
-    //     tp->addTask(ThreadPool::Task(handler));
-    //     tp->addTask(ThreadPool::Task(handler));
-    //     tp->start();
-    //     std::cout << "thread pool started" << std::endl;
-    //     tp->stop();
-    //     std::cout << "thread pool stop" << std::endl;
-    // }
+    int intHandler(int a)
+    {
+        std::cout << "input a:" << a << std::endl;
+        return a;
+    }
+
+    TEST_F(ThreadPoolTest, BaseTest)
+    {
+        tp->exec(ThreadPool::Task(handler));
+        tp->exec(ThreadPool::Task(handler));
+        tp->exec(ThreadPool::Task(handler));
+        tp->exec(std::function<int(int)>(intHandler), 100);
+        auto ret = tp->exec(ThreadPool::Task(handler));
+        tp->start();
+        std::cout << "thread pool started" << std::endl;
+        // tp->stopForAllDone();
+        std::cout << "thread pool stop" << std::endl;
+    }
 }

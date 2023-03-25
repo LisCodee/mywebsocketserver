@@ -1,55 +1,85 @@
 #pragma once
+#ifdef WIN32
 
-#include <thread>
+#else
+#include "../linuxCode/Thread.h"
+#include "../linuxCode/sync.h"
+#endif
+
+#include <atomic>
 #include <queue>
 #include <memory>
-#include <mutex>
-#include <condition_variable>
 #include <functional>
 #include <vector>
-
-class Task
+#include <future>
+namespace net
 {
-public:
-    Task();
-    Task(void *data);
-    virtual ~Task();
+    namespace thread
+    {
+        class ThreadPool
+        {
+        public:
+            typedef std::function<void()> Task;
+            explicit ThreadPool(int numThreads, int maxThreads);
+            virtual ~ThreadPool();
+            /// @brief 启动线程池
+            void start();
+            /// @brief 当前正在执行的任务执行完后退出
+            /// 谨慎使用！！！
+            void stopForAllDone();
+            /// @brief 获取任务
+            /// @param t
+            /// @return
+            bool getTask(Task &t);
 
-    void *getData() {return data_;}
-    void setData(void *data){data_ = data; data = nullptr;}
+            template <class F, class... Args>
+            auto exec(F &&f, Args... args) -> std::future<decltype(f(args...))>;
 
-    virtual void run() = 0;
-    virtual void destroy() = 0;
+        public:
+            static int kPoolNums; // 线程池数量
 
-private:
-    void *data_;
-};
+        private:
+            /// @brief 线程BASE函数
+            void threadLoop();
+            static void *threadFunc(void *arg)
+            {
+                ThreadPool *obj = static_cast<ThreadPool *>(arg);
+                obj->threadLoop();
+                return nullptr;
+            }
 
-class ThreadPool
-{
-public:
-    static int kPoolNums; // 线程池数量
-    typedef std::function<void()> Task;
-    explicit ThreadPool(int numThreads, int maxThreads);
-    virtual ~ThreadPool();
-
-    void start();
-    void stop();
-
-    void addTask(const Task &t);
-
-private:
-    void threadLoop();
-    Task getTask();
-
-private:
-    int kPoolIdx_;                                          // 当前线程池编号
-    bool bStart_;                                           // 线程池是否启动
-    bool bStop_;                                            // 线程池是否停止
-    std::vector<std::shared_ptr<std::thread>> listThreads_; // 已创建的线程
-    std::queue<Task> queueTasks_;                           // 任务队列
-    std::mutex mutexTask_;                                  // 保护任务队列互斥量
-    std::condition_variable cvTask_;                        // 任务队列条件变量
-    int kCurrentThreadNum_;                                 // 当前线程数
-    int kMaxThreadNum_;                                     // 最大线程数
-};
+        private:
+            int kPoolIdx_;                                         // 当前线程池编号
+            std::atomic_bool bStop_;                               // 线程池是否停止
+            std::atomic_uint32_t runningNum_;                      // 当前正在执行的任务数
+            std::vector<std::shared_ptr<Thread>> listIdelThreads_; // 空闲先线程
+            std::vector<std::shared_ptr<Thread>> listBusyThreads_; // 忙碌线程
+            std::queue<Task> queueTasks_;                          // 任务队列
+            Mutex mutex_;                                          // 保护任务队列互斥量
+            ConditionVariable cvTask_;                             // 任务队列条件变量
+            ConditionVariable cvExit_;                             // 退出条件变量
+            int kCurrentThreadNum_;                                // 当前线程数
+            int kMaxThreadNum_;                                    // 最大线程数
+        };
+        template <class F, class... Args>
+        inline auto ThreadPool::exec(F &&f, Args... args) -> std::future<decltype(f(args...))>
+        {
+            if(bStop_)
+            {
+                start();
+            }
+            using RetType = decltype(f(args...)); // 封装返回值
+            // 下面这行代码~~需要详细研究
+            auto task = std::make_shared<std::packaged_task<RetType()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...)); // 封装任务
+            Task t = [task]()
+            {
+                (*task)();
+            };
+            mutex_.lock();
+            queueTasks_.push(t);
+            cvTask_.notifyOne();
+            mutex_.unlock();
+            return task->get_future();
+        }
+    }
+}

@@ -5,6 +5,18 @@
 #include <unistd.h>
 #include "../net/net.h"
 #include <sys/socket.h>
+#include "../base/threadpool.h"
+
+void handler()
+{
+    std::cout << "handler func exec" << std::endl;
+}
+
+int intHandler(int a)
+{
+    std::cout << "input a:" << a << std::endl;
+    return a;
+}
 
 int main(int argc, char *argv[])
 {
@@ -13,13 +25,12 @@ int main(int argc, char *argv[])
 #else
     int threadId = syscall(SYS_gettid);
 #endif
-    std::cout << "main threadId:" << threadId << std::endl;
-    AsyncLog::init("mainLog.log");
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    net::Socket s(sockfd);
-    std::cout << "sockfd:" << s.fd() << std::endl;
-    net::Socket s2(true);
-    std::cout << "sock2fd:" << s2.fd() << std::endl;
-    AsyncLog::uninit();
+    using net::thread::ThreadPool;
+    ThreadPool pool1(4, 4);
+    pool1.start();
+    pool1.exec(std::function<void()>(std::move(handler)));
+    auto a = pool1.exec(std::function<int(int)>(std::move(intHandler)), 100);
+    std::cout << a.get() << std::endl;
+    std::cout << "in main thread" << std::endl;
     return 0;
 }

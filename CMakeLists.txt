@@ -12,16 +12,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -Wall -O0 -Wno-unused-vari
 set(linux_src 
     linuxCode/Thread.h
     linuxCode/Thread.cpp
+    linuxCode/sync.h
+    linuxCode/sync.cpp
     )
 
-set(unit_test
-    test/asynclog_unittest.cpp
-    test/socket_unittest.cpp
-    test/time_unittest.cpp
-    test/threadpool_unittest.cpp
-    test/_main.cpp
-    test/thread_unittest.cpp
-    )
+# set(unit_test
+#     test/asynclog_unittest.cpp
+#     test/socket_unittest.cpp
+#     test/time_unittest.cpp
+#     test/threadpool_unittest.cpp
+#     test/_main.cpp
+#     test/thread_unittest.cpp
+#     )
 set(utils 
     base/AsyncLog.h
     base/AsyncLog.cpp
@@ -33,8 +35,7 @@ set(utils
 set(net 
     net/net.h
     net/net.cpp)
-set(base )
-# set(src src/main.cpp)
+set(src src/main.cpp)
 
 enable_testing()
 

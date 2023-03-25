@@ -2,94 +2,73 @@
 #include "AsyncLog.h"
 #include <iostream>
 
-int ThreadPool::kPoolNums = 0;
+int net::thread::ThreadPool::kPoolNums = 0;
 
-ThreadPool::ThreadPool(int numThreads, int maxThreads)
-    : bStart_(false), bStop_(false),
-      kCurrentThreadNum_(0), kMaxThreadNum_(maxThreads)
+net::thread::ThreadPool::ThreadPool(int numThreads, int maxThreads)
+    : kCurrentThreadNum_(numThreads), kMaxThreadNum_(maxThreads),
+      kPoolIdx_(ThreadPool::kPoolNums++), bStop_(true), runningNum_(0)
 {
-    kPoolIdx_ = kPoolNums++;
 }
 
-ThreadPool::~ThreadPool()
+net::thread::ThreadPool::~ThreadPool()
 {
-    stop();
 }
 
-void ThreadPool::start()
+void net::thread::ThreadPool::start()
 {
-    if (bStart_)
+    if(!bStop_)
         return;
-    bStart_ = true;
-    for (int i = 0; i < kMaxThreadNum_; ++i)
+    for (int i = 0; i < kCurrentThreadNum_; ++i)
     {
-        listThreads_.push_back(
-            std::shared_ptr<std::thread>(new std::thread(std::bind(&ThreadPool::threadLoop, this))));
+        listIdelThreads_.push_back(std::shared_ptr<Thread>(new Thread(&ThreadPool::threadFunc, this)));
     }
-    LOGD("Thread pool %d started, create all threads", kPoolIdx_);
+    bStop_ = false;
 }
 
-void ThreadPool::stop()
+void net::thread::ThreadPool::stopForAllDone()
 {
-    if (bStop_)
-        return;
-    // 唤醒所有线程
-    std::unique_lock<std::mutex> lock(mutexTask_);
-    bStart_ = false;
     bStop_ = true;
-    cvTask_.notify_all();
-    LOGD("Thread pool %d stopping, notify all threads", kPoolIdx_);
-
-    for (auto &t : listThreads_)
+    mutex_.lock();
+    while (runningNum_ != 0)
     {
-        if (t->joinable())
-        {
-            t->join();
-        }
-        else
-        {
-            LOGW("can't join the thread in pool:%d", kPoolIdx_);
-        }
-    }
-    // 清空线程池
-    listThreads_.clear();
-}
-
-void ThreadPool::addTask(const Task& t)
-{
-    std::unique_lock<std::mutex> lock(mutexTask_);
-    queueTasks_.push(t);
-}
-
-
-
-void ThreadPool::threadLoop()
-{
-    LOGD("thread in pool:%d start run.", kPoolIdx_);
-    while(bStart_)
-    {
-        std::cout << "thread getTask()" << std::endl;
-        ThreadPool::Task t = getTask();
-        if(t)
-        {
-            t();
-        }
+        cvExit_.wait(mutex_);
     }
 }
 
-ThreadPool::Task ThreadPool::getTask()
+bool net::thread::ThreadPool::getTask(Task &t)
 {
-    Task t;
-
-    std::unique_lock<std::mutex> lock(mutexTask_);
-    // 等待任务执行
-    while (queueTasks_.empty() && bStart_)
+    mutex_.lock();
+    if (queueTasks_.empty())
     {
-        cvTask_.wait(lock);
+        cvTask_.wait(mutex_);
     }
-    t = queueTasks_.front();
-    queueTasks_.pop();
-    LOGD("thread pool:%d thread: get a task.", kPoolIdx_);
+    if (bStop_)
+    {
+        mutex_.unlock();
+        return false;
+    }
+    if (!queueTasks_.empty())
+    {
+        t = std::move(queueTasks_.front());
+        queueTasks_.pop();
+        return true;
+    }
+    mutex_.unlock();
+    return false;
+}
 
-    return t;
+void net::thread::ThreadPool::threadLoop()
+{
+    while (!bStop_)
+    {
+        Task task;
+        if (getTask(task))
+        {
+            ++runningNum_;
+            task();
+            --runningNum_;
+        }
+    }
+    cvExit_.notifyAll();
+    return;
 }

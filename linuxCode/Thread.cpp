@@ -16,6 +16,15 @@ net::thread::Thread::Thread(void *(*func)(void *), void *arg, bool detach) : det
     pthread_attr_destroy(&attr);
 }
 
+net::thread::Thread::Thread(Callback cb, void *arg)
+{
+    ThreadData td{cb};
+    if(pthread_create(&threadId_, NULL, &ThreadData::start_thread, &td))
+    {
+        LOGF("create thread error");
+    }
+}
+
 net::thread::Thread::~Thread()
 {
 }
