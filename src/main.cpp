@@ -33,7 +33,5 @@ int main(int argc, char *argv[])
     auto a = pool1.exec(std::function<int(int)>(std::move(intHandler)), 100);
     std::cout << a.get() << std::endl;
     std::cout << "in main thread" << std::endl;
-    bool exit = pool1.stopForAllDone();
-    std::cout << "bool" << exit << std::endl;
-    ::exit(0);
+    pool1.stopForAllDone();
 }

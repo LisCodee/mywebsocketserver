@@ -19,9 +19,9 @@ namespace net
             virtual ~ThreadPool();
             /// @brief 启动线程池
             void start();
-            /// @brief 当前正在执行的任务执行完后退出
-            /// 谨慎使用！！！
-            bool stopForAllDone();
+            /// @brief 当前正在执行的任务执行完后退出程序
+            /// 谨慎使用！！！在程序退出前使用
+            void stopForAllDone();
             /// @brief 获取任务
             /// @param t
             /// @return

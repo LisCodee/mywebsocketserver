@@ -27,7 +27,7 @@ void net::thread::ThreadPool::start()
     bStop_ = false;
 }
 
-bool net::thread::ThreadPool::stopForAllDone()
+void net::thread::ThreadPool::stopForAllDone()
 {
     bStop_ = true;
     std::unique_lock<std::mutex> lock(mutex_);
@@ -35,7 +35,7 @@ bool net::thread::ThreadPool::stopForAllDone()
     {
         cvExit_.wait(lock);
     }
-    return true;
+    exit(0);
 }
 
 bool net::thread::ThreadPool::getTask(Task &t)

@@ -42,7 +42,9 @@ namespace
         return a;
     }
 
-    TEST_F(ThreadPoolTest, BaseTest)
+    using ThreadPoolExitTest = ThreadPoolTest;
+
+    TEST_F(ThreadPoolExitTest, BaseTest)
     {
         tp->exec(ThreadPool::Task(handler));
         tp->exec(ThreadPool::Task(handler));
@@ -51,7 +53,6 @@ namespace
         tp->exec(ThreadPool::Task(handler));
         tp->start();
         EXPECT_EQ(static_cast<int>(ret.get()), 100);
-        EXPECT_EQ(tp->stopForAllDone(), true);
         // EXPECT_DEATH({printf("out");}, "");
     }
 }
