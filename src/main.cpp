@@ -26,11 +26,14 @@ int main(int argc, char *argv[])
     int threadId = syscall(SYS_gettid);
 #endif
     using net::thread::ThreadPool;
+    AsyncLog::init();
     ThreadPool pool1(4, 4);
     pool1.start();
     pool1.exec(std::function<void()>(std::move(handler)));
     auto a = pool1.exec(std::function<int(int)>(std::move(intHandler)), 100);
     std::cout << a.get() << std::endl;
     std::cout << "in main thread" << std::endl;
-    return 0;
+    bool exit = pool1.stopForAllDone();
+    std::cout << "bool" << exit << std::endl;
+    ::exit(0);
 }

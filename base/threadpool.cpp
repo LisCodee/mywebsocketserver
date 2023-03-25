@@ -16,35 +16,37 @@ net::thread::ThreadPool::~ThreadPool()
 
 void net::thread::ThreadPool::start()
 {
-    if(!bStop_)
+    if (!bStop_)
         return;
     for (int i = 0; i < kCurrentThreadNum_; ++i)
     {
-        listIdelThreads_.push_back(std::shared_ptr<Thread>(new Thread(&ThreadPool::threadFunc, this)));
+        auto f = std::bind(&ThreadPool::threadLoop, this);
+        std::shared_ptr<std::thread> spThread(new std::thread(f, this));
+        listIdelThreads_.push_back(spThread);
     }
     bStop_ = false;
 }
 
-void net::thread::ThreadPool::stopForAllDone()
+bool net::thread::ThreadPool::stopForAllDone()
 {
     bStop_ = true;
-    mutex_.lock();
+    std::unique_lock<std::mutex> lock(mutex_);
     while (runningNum_ != 0)
     {
-        cvExit_.wait(mutex_);
+        cvExit_.wait(lock);
     }
+    return true;
 }
 
 bool net::thread::ThreadPool::getTask(Task &t)
 {
-    mutex_.lock();
+    std::unique_lock<std::mutex> lock(mutex_);
     if (queueTasks_.empty())
     {
-        cvTask_.wait(mutex_);
+        cvTask_.wait(lock);
     }
     if (bStop_)
     {
-        mutex_.unlock();
         return false;
     }
     if (!queueTasks_.empty())
@@ -53,7 +55,6 @@ bool net::thread::ThreadPool::getTask(Task &t)
         queueTasks_.pop();
         return true;
     }
-    mutex_.unlock();
     return false;
 }
 
@@ -67,8 +68,12 @@ void net::thread::ThreadPool::threadLoop()
             ++runningNum_;
             task();
             --runningNum_;
+            int a = runningNum_;
+            LOGI("this is %d tasks running in pool:%d", a, kPoolIdx_);
         }
     }
-    cvExit_.notifyAll();
+    while (runningNum_)
+        std::this_thread::yield();
+    cvExit_.notify_all();
     return;
 }

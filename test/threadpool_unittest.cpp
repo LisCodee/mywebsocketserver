@@ -47,11 +47,11 @@ namespace
         tp->exec(ThreadPool::Task(handler));
         tp->exec(ThreadPool::Task(handler));
         tp->exec(ThreadPool::Task(handler));
-        tp->exec(std::function<int(int)>(intHandler), 100);
-        auto ret = tp->exec(ThreadPool::Task(handler));
+        auto ret = tp->exec(std::function<int(int)>(intHandler), 100);
+        tp->exec(ThreadPool::Task(handler));
         tp->start();
-        std::cout << "thread pool started" << std::endl;
-        // tp->stopForAllDone();
-        std::cout << "thread pool stop" << std::endl;
+        EXPECT_EQ(static_cast<int>(ret.get()), 100);
+        EXPECT_EQ(tp->stopForAllDone(), true);
+        // EXPECT_DEATH({printf("out");}, "");
     }
 }

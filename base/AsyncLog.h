@@ -34,7 +34,7 @@ public:
     /// @param bTruncate 是否截断长日志
     /// @param iMaxSize 长日志标准
     /// @return
-    static bool init(const char *pszLogFileName, bool bToFile = true, bool bTruncate = true, uint32_t iMaxSize = 256);
+    static bool init(const char *pszLogFileName="", bool bToFile = true, bool bTruncate = true, uint32_t iMaxSize = 256);
     static bool uninit();
     static bool setLevel(LOG_LEVEL level);
     static bool isRunning();

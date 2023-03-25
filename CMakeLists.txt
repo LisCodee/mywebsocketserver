@@ -16,14 +16,14 @@ set(linux_src
     linuxCode/sync.cpp
     )
 
-# set(unit_test
-#     test/asynclog_unittest.cpp
-#     test/socket_unittest.cpp
-#     test/time_unittest.cpp
-#     test/threadpool_unittest.cpp
-#     test/_main.cpp
-#     test/thread_unittest.cpp
-#     )
+set(unit_test
+    test/asynclog_unittest.cpp
+    test/socket_unittest.cpp
+    test/time_unittest.cpp
+    test/threadpool_unittest.cpp
+    test/_main.cpp
+    test/thread_unittest.cpp
+    )
 set(utils 
     base/AsyncLog.h
     base/AsyncLog.cpp
@@ -39,8 +39,9 @@ set(src src/main.cpp)
 
 enable_testing()
 
-add_executable(myserver ${utils} ${unit_test} ${src} ${net} ${linux_src})
-target_link_libraries(myserver PUBLIC 
+add_executable(unittest ${utils} ${unit_test} ${net} ${linux_src})
+add_executable(myserver ${utils}  ${src} ${net} ${linux_src})
+target_link_libraries(unittest PUBLIC 
     /usr/local/lib/libgtest.a
     /usr/local/lib/libgtest_main.a
 )

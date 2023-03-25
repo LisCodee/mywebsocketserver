@@ -1,11 +1,6 @@
 #pragma once
-#ifdef WIN32
 
-#else
-#include "../linuxCode/Thread.h"
-#include "../linuxCode/sync.h"
-#endif
-
+#include <thread>
 #include <atomic>
 #include <queue>
 #include <memory>
@@ -26,7 +21,7 @@ namespace net
             void start();
             /// @brief 当前正在执行的任务执行完后退出
             /// 谨慎使用！！！
-            void stopForAllDone();
+            bool stopForAllDone();
             /// @brief 获取任务
             /// @param t
             /// @return
@@ -35,36 +30,32 @@ namespace net
             template <class F, class... Args>
             auto exec(F &&f, Args... args) -> std::future<decltype(f(args...))>;
 
+            int getPoolId() const { return kPoolIdx_; }
+
         public:
             static int kPoolNums; // 线程池数量
 
         private:
             /// @brief 线程BASE函数
             void threadLoop();
-            static void *threadFunc(void *arg)
-            {
-                ThreadPool *obj = static_cast<ThreadPool *>(arg);
-                obj->threadLoop();
-                return nullptr;
-            }
 
         private:
-            int kPoolIdx_;                                         // 当前线程池编号
-            std::atomic_bool bStop_;                               // 线程池是否停止
-            std::atomic_uint32_t runningNum_;                      // 当前正在执行的任务数
-            std::vector<std::shared_ptr<Thread>> listIdelThreads_; // 空闲先线程
-            std::vector<std::shared_ptr<Thread>> listBusyThreads_; // 忙碌线程
-            std::queue<Task> queueTasks_;                          // 任务队列
-            Mutex mutex_;                                          // 保护任务队列互斥量
-            ConditionVariable cvTask_;                             // 任务队列条件变量
-            ConditionVariable cvExit_;                             // 退出条件变量
-            int kCurrentThreadNum_;                                // 当前线程数
-            int kMaxThreadNum_;                                    // 最大线程数
+            int kPoolIdx_;                                              // 当前线程池编号
+            std::atomic_bool bStop_;                                    // 线程池是否停止
+            std::atomic_uint32_t runningNum_;                           // 当前正在执行的任务数
+            std::vector<std::shared_ptr<std::thread>> listIdelThreads_; // 空闲先线程
+            std::vector<std::shared_ptr<std::thread>> listBusyThreads_; // 忙碌线程
+            std::queue<Task> queueTasks_;                               // 任务队列
+            std::mutex mutex_;                                          // 保护任务队列互斥量
+            std::condition_variable cvTask_;                            // 任务队列条件变量
+            std::condition_variable cvExit_;                            // 退出条件变量
+            int kCurrentThreadNum_;                                     // 当前线程数
+            int kMaxThreadNum_;                                         // 最大线程数
         };
         template <class F, class... Args>
         inline auto ThreadPool::exec(F &&f, Args... args) -> std::future<decltype(f(args...))>
         {
-            if(bStop_)
+            if (bStop_)
             {
                 start();
             }
@@ -75,10 +66,9 @@ namespace net
             {
                 (*task)();
             };
-            mutex_.lock();
+            std::unique_lock<std::mutex> lock(mutex_);
             queueTasks_.push(t);
-            cvTask_.notifyOne();
-            mutex_.unlock();
+            cvTask_.notify_one();
             return task->get_future();
         }
     }

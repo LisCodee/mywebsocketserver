@@ -71,7 +71,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "netfwd": "cpp"
+        "netfwd": "cpp",
+        "future": "cpp"
     },
     "cmake.configureOnOpen": true
 }
