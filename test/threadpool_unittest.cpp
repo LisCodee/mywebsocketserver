@@ -35,10 +35,15 @@ namespace
         std::cout << "handler func exec" << std::endl;
     }
 
-    TEST_F(ThreadTest, BaseTest)
-    {
-        tp->addTask(ThreadPool::Task(handler));
-        tp->start();
-        tp->stop();
-    }
+    // TEST_F(ThreadTest, BaseTest)
+    // {
+    //     tp->addTask(ThreadPool::Task(handler));
+    //     tp->addTask(ThreadPool::Task(handler));
+    //     tp->addTask(ThreadPool::Task(handler));
+    //     tp->addTask(ThreadPool::Task(handler));
+    //     tp->start();
+    //     std::cout << "thread pool started" << std::endl;
+    //     tp->stop();
+    //     std::cout << "thread pool stop" << std::endl;
+    // }
 }

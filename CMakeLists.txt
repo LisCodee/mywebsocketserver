@@ -9,12 +9,18 @@ project(myserver VERSION 1.0)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -Wall -O0 -Wno-unused-variable -pthread")
 
+set(linux_src 
+    linuxCode/Thread.h
+    linuxCode/Thread.cpp
+    )
+
 set(unit_test
     test/asynclog_unittest.cpp
     test/socket_unittest.cpp
     test/time_unittest.cpp
-    test/_main.cpp
     test/threadpool_unittest.cpp
+    test/_main.cpp
+    test/thread_unittest.cpp
     )
 set(utils 
     base/AsyncLog.h
@@ -32,7 +38,7 @@ set(base )
 
 enable_testing()
 
-add_executable(myserver ${utils} ${unit_test} ${src} ${net})
+add_executable(myserver ${utils} ${unit_test} ${src} ${net} ${linux_src})
 target_link_libraries(myserver PUBLIC 
     /usr/local/lib/libgtest.a
     /usr/local/lib/libgtest_main.a

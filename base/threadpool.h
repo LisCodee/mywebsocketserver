@@ -8,6 +8,23 @@
 #include <functional>
 #include <vector>
 
+class Task
+{
+public:
+    Task();
+    Task(void *data);
+    virtual ~Task();
+
+    void *getData() {return data_;}
+    void setData(void *data){data_ = data; data = nullptr;}
+
+    virtual void run() = 0;
+    virtual void destroy() = 0;
+
+private:
+    void *data_;
+};
+
 class ThreadPool
 {
 public:
@@ -19,11 +36,11 @@ public:
     void start();
     void stop();
 
-    void addTask(const Task& t);
+    void addTask(const Task &t);
 
 private:
     void threadLoop();
-    Task& getTask();
+    Task getTask();
 
 private:
     int kPoolIdx_;                                          // 当前线程池编号

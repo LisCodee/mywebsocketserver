@@ -1,5 +1,6 @@
 #include "threadpool.h"
 #include "AsyncLog.h"
+#include <iostream>
 
 int ThreadPool::kPoolNums = 0;
 
@@ -19,11 +20,11 @@ void ThreadPool::start()
 {
     if (bStart_)
         return;
-
+    bStart_ = true;
     for (int i = 0; i < kMaxThreadNum_; ++i)
     {
         listThreads_.push_back(
-            std::shared_ptr<std::thread>(new std::thread(threadLoop, this)));
+            std::shared_ptr<std::thread>(new std::thread(std::bind(&ThreadPool::threadLoop, this))));
     }
     LOGD("Thread pool %d started, create all threads", kPoolIdx_);
 }
@@ -32,9 +33,10 @@ void ThreadPool::stop()
 {
     if (bStop_)
         return;
-    bStop_ = true;
     // 唤醒所有线程
     std::unique_lock<std::mutex> lock(mutexTask_);
+    bStart_ = false;
+    bStop_ = true;
     cvTask_.notify_all();
     LOGD("Thread pool %d stopping, notify all threads", kPoolIdx_);
 
@@ -66,11 +68,16 @@ void ThreadPool::threadLoop()
     LOGD("thread in pool:%d start run.", kPoolIdx_);
     while(bStart_)
     {
-        getTask()();
+        std::cout << "thread getTask()" << std::endl;
+        ThreadPool::Task t = getTask();
+        if(t)
+        {
+            t();
+        }
     }
 }
 
-ThreadPool::Task& ThreadPool::getTask()
+ThreadPool::Task ThreadPool::getTask()
 {
     Task t;
 
