@@ -14,12 +14,15 @@ set(unit_test
     test/socket_unittest.cpp
     test/time_unittest.cpp
     test/_main.cpp
+    test/threadpool_unittest.cpp
     )
 set(utils 
     base/AsyncLog.h
     base/AsyncLog.cpp
     base/time.h
     base/time.cpp
+    base/threadpool.h
+    base/threadpool.cpp
     )
 set(net 
     net/net.h
