@@ -27,9 +27,17 @@ namespace net
             /// @return
             bool getTask(Task &t);
 
+            /// @brief 执行任务
+            /// @tparam F function对象
+            /// @tparam ...Args 
+            /// @param f 任务回调
+            /// @param ...args 回调参数
+            /// @return 
             template <class F, class... Args>
             auto exec(F &&f, Args... args) -> std::future<decltype(f(args...))>;
 
+            /// @brief 获取线程池Id
+            /// @return 
             int getPoolId() const { return kPoolIdx_; }
 
         public:
